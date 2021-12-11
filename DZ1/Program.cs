@@ -58,13 +58,10 @@ class ListNode : NodeType, IEnumerable<node>
                 )
         ) + "\n" + string.Concat(Enumerable.Repeat(" ", indent)) + "]";
     }
-
+    
     public IEnumerator<node> GetEnumerator()
     {
-        foreach (var l in _data)
-        {
-            yield return l;
-        }
+        return ((IEnumerable<node>) _data).GetEnumerator();
     }
 
     IEnumerator IEnumerable.GetEnumerator()
@@ -114,18 +111,6 @@ class DictNode : NodeType
         }
 
         _DrawFrame(w, h, z, 0, 0, ref env, false);
-        _DrawFrame(w, h, z, 0, 0, ref env, false);
-
-        // for (int i = 0; i < 11; i++)
-        // {
-        //     for (int j = 0; j < 80; j++)
-        //     {
-        //         Console.Write(env[i, j].Item1);
-        //     }
-        //
-        //     Console.Write('\n');
-        // }
-
         _DrawChildren(ref env, w, h, 0, 0, z, 1, 1);
 
         for (var i = 0; i < h; i++)
@@ -167,8 +152,8 @@ class DictNode : NodeType
                     strNode.asString,
                     parentX + offsetX,
                     parentY + offsetY,
-                    parentW,
-                    parentH,
+                    parentW - 2,
+                    parentH - 2,
                     parentZ
                 );
                 break;
@@ -192,7 +177,7 @@ class DictNode : NodeType
 
     private void _Write(string text, int startX, int startY, int w, int h, int z)
     {
-        // throw new NotImplementedException();
+        text = text.TrimStart();
     }
 
     private void Draw(
