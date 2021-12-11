@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 abstract class NodeType
 {
@@ -58,7 +59,7 @@ class ListNode : NodeType, IEnumerable<node>
                 )
         ) + "\n" + string.Concat(Enumerable.Repeat(" ", indent)) + "]";
     }
-    
+
     public IEnumerator<node> GetEnumerator()
     {
         return ((IEnumerable<node>) _data).GetEnumerator();
@@ -102,9 +103,9 @@ class DictNode : NodeType
 
         Tuple<char, int>[,] env = new Tuple<char, int>[h, w];
 
-        for (int row = 0; row < h; row++)
+        for (var row = 0; row < h; row++)
         {
-            for (int col = 0; col < w; col++)
+            for (var col = 0; col < w; col++)
             {
                 env[row, col] = new Tuple<char, int>('x', z);
             }
@@ -116,9 +117,7 @@ class DictNode : NodeType
         for (var i = 0; i < h; i++)
         {
             for (var j = 0; j < w; j++)
-            {
                 Console.Write(env[i, j].Item1);
-            }
             Console.WriteLine();
         }
 
@@ -147,15 +146,16 @@ class DictNode : NodeType
             case DictNode:
                 throw new ArgumentException("Tried drawing DictNode");
             case StrNode strNode:
-                Console.WriteLine("Drawing " + node);
                 _Write(
+                    ref env,
                     strNode.asString,
-                    parentX + offsetX,
-                    parentY + offsetY,
+                    offsetX,
+                    offsetY,
                     parentW - 2,
                     parentH - 2,
                     parentZ
                 );
+
                 break;
 
             case ListNode listNode:
@@ -175,9 +175,78 @@ class DictNode : NodeType
         }
     }
 
-    private void _Write(string text, int startX, int startY, int w, int h, int z)
+    private void _Write(
+        ref Tuple<char, int>[,] env,
+        string text,
+        int startX,
+        int startY,
+        int w,
+        int h,
+        int z
+    )
     {
-        text = text.TrimStart();
+        string trimmed = text.TrimStart();
+        int whitespacesCount = Math.Min(text.Length - trimmed.Length, w);
+
+        text = Regex.Replace(trimmed, @"\s+", " ");
+        int cursor = 0, row = 0;
+
+        for (var i = 0; i < whitespacesCount; i++)
+        {
+            _DrawCell(startX + cursor, startY + row, z, ref env, ' ');
+            for (var k = 0; k < 11; k++)
+            {
+                for (var j = 0; j < 30; j++)
+                    Console.Write(env[k, j].Item1);
+                Console.WriteLine();
+            }
+
+            cursor++;
+            if (cursor >= w)
+            {
+                cursor = 0;
+                row++;
+            }
+        }
+
+        foreach (var word in text.Split(' '))
+        {
+            if (word.Length > w - cursor && cursor > 0)
+            {
+                row += 1;
+                cursor = 0;
+            }
+
+            if (row >= h)
+                return;
+
+            foreach (var letter in word)
+            {
+                _DrawCell(startX + cursor, startY + row, z, ref env, letter);
+                for (var k = 0; k < 11; k++)
+                {
+                    for (var j = 0; j < 30; j++)
+                        Console.Write(env[k, j].Item1);
+                    Console.WriteLine();
+                }
+
+                cursor++;
+                if (cursor >= w)
+                {
+                    cursor = 0;
+                    row++;
+                }
+
+                if (row > h)
+                    return;
+            }
+
+            if (cursor != 0)
+            {
+                _DrawCell(startX + cursor, startY + row, z, ref env, ' ');
+                cursor++;
+            }
+        }
     }
 
     private void Draw(
@@ -194,16 +263,6 @@ class DictNode : NodeType
         int w = Math.Min(_NodeToInt("w", 80), parentW - x - 2);
         int h = Math.Min(_NodeToInt("h", 11), parentH - y - 2);
 
-        Console.WriteLine("Drawing:");
-        Console.Write("x: " + x.ToString() + " ");
-        Console.Write("y: " + y.ToString() + " ");
-        Console.Write("z: " + y.ToString() + " ");
-        Console.Write("w: " + w.ToString() + " ");
-        Console.Write("h: " + h.ToString() + " ");
-        Console.Write("offsetX: " + offsetX.ToString() + " ");
-        Console.Write("offsetY: " + offsetY + " ");
-        Console.WriteLine();
-
         if (parentW < x || x < 0 || parentH < y || y < 0)
             return;
 
@@ -218,17 +277,6 @@ class DictNode : NodeType
             y + offsetY,
             ref env
         );
-
-        Console.WriteLine("Done: ");
-        // for (int i = 0; i < 11; i++)
-        // {
-        //     for (int j = 0; j < 80; j++)
-        //     {
-        //         Console.Write(env[i, j].Item1);
-        //     }
-        //
-        //     Console.Write('\n');
-        // }
 
         _DrawChildren(ref env, w, h, offsetX + x, offsetY + y, z, offsetX + x + 1, offsetY + y + 1);
     }
@@ -276,7 +324,7 @@ class DictNode : NodeType
         throw new ArgumentException("expected int");
     }
 
-    private void _DrawCell(int x, int y, int z, ref Tuple<char, int>[,] env, char c, bool checkZ)
+    private void _DrawCell(int x, int y, int z, ref Tuple<char, int>[,] env, char c, bool checkZ = true)
     {
         if (!checkZ || env[y, x].Item2 <= z)
         {
@@ -383,7 +431,7 @@ class Program
                                                     new Dictionary<string, node>
                                                     {
                                                         {"z", new node(3)},
-                                                        {"children", new node("Jos jedan vidljiv")}
+                                                        {"children", new node("Jos                   jedan vidljiv")}
                                                     }
                                                 )
                                             }
@@ -397,10 +445,10 @@ class Program
             }
         );
 
-        // Prvi dio zadatka
+// Prvi dio zadatka
         Console.WriteLine(x.pretty_print());
 
-        // Drugi dio zadatka
+// Drugi dio zadatka
         Console.WriteLine(x);
     }
 }
