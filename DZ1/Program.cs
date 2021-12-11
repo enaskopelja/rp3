@@ -26,10 +26,7 @@ class StrNode : NodeType
 {
     private string _value;
 
-    public StrNode(string value)
-    {
-        _value = value;
-    }
+    public StrNode(string value) => _value = value;
 
     public override string pretty_print(int indent = 0) => "\"" + _value + "\"";
 
@@ -41,10 +38,7 @@ class ListNode : NodeType, IEnumerable<node>
 {
     private List<node> _data;
 
-    public ListNode(List<node> data)
-    {
-        _data = data;
-    }
+    public ListNode(List<node> data) => _data = data;
 
     public override string pretty_print(int indent = 0)
     {
@@ -81,10 +75,7 @@ class DictNode : NodeType
 {
     private Dictionary<string, node> _data;
 
-    public DictNode(Dictionary<string, node> data)
-    {
-        _data = data;
-    }
+    public DictNode(Dictionary<string, node> data) => _data = data;
 
     public override string pretty_print(int indent = 0)
     {
@@ -116,20 +107,10 @@ class DictNode : NodeType
         {
             for (int col = 0; col < 80; col++)
             {
-                env[row, col] = new Tuple<char, int>('x', 0);
+                env[row, col] = new Tuple<char, int>('x', z);
             }
         }
-        
-        for (int i = 0; i < 11; i++)
-        {
-            for (int j = 0; j < 80; j++)
-            {
-                Console.Write(env[i, j].Item1);
-            }
-    
-            Console.Write('\n');
-        }
-    
+
         _DrawFrame(0, 0, w, h, z, 0, 0, ref env, false);
     
         for (int i = 0; i < 11; i++)
@@ -142,7 +123,17 @@ class DictNode : NodeType
             Console.Write('\n');
         }
         
-        _DrawChildren(ref env, w, h, 0,0, z, 0,0);
+        _DrawChildren(ref env, w, h, 0,0, z, 1,1);
+
+        for (int i = 0; i < 11; i++)
+        {
+            for (int j = 0; j < 80; j++)
+            {
+                Console.Write(env[i, j].Item1);
+            }
+    
+            Console.Write('\n');
+        }
 
         return "bok";
 
@@ -161,19 +152,13 @@ class DictNode : NodeType
     {
         if(!_data.ContainsKey("children"))
             return;
-        
-        
+
         if (_data["children"].Impl is IntNode)
-        {
             throw new ArgumentException("Tried drawing IntNode");
-        }
         if (_data["children"].Impl is DictNode)
-        {
             throw new ArgumentException("Tried drawing DictNode");
-        }
         if (_data["children"].Impl is StrNode)
         {
-            _DrawFrame(parentX, parentY, parentW, parentH, parentZ, offsetX, offsetY, ref env);
             Console.WriteLine("Should draw " + _data["children"].Impl);
         }
         else if (_data["children"].Impl is ListNode)
@@ -188,15 +173,11 @@ class DictNode : NodeType
                     d.Draw(ref env, parentW, parentH, offsetX, offsetY);
                 }
                 else
-                {
                     throw new ArgumentException("Encountered ListNode with non DictNode element while drawing");
-                }
             }
         }
         else
-        {
             throw new ArgumentException("Unknown node type");
-        }
 
     }
 
@@ -214,17 +195,33 @@ class DictNode : NodeType
         int y = _NodeToInt("y", 0);
         int z = _NodeToInt("z", 0);
 
+        Console.WriteLine("Drawing:");
+        Console.Write("x: " + x.ToString() + " ");
+        Console.Write("y: " + y.ToString() + " ");
+        Console.Write("z: " + y.ToString() + " ");
+        Console.Write("w: " + w.ToString() + " "); 
+        Console.Write("h: " + h.ToString() + " ");
+        Console.Write("offsetX: " + offsetX.ToString() + " ");
+        Console.Write("offsetY: " + offsetY + " ");
+        Console.WriteLine();
+        
         if (parentW < x || x < 0 || parentH < y || y < 0)
+        {
+            Console.WriteLine("pao na 1 " + " parentW " + parentW + " parentH " + parentH);
             return;
+        }
 
         if (x + w > parentW - 2)
-            w = parentW - 1 - x;
+            w = parentW - x - 2;
 
         if (y + h > parentH - 2)
-            h = parentH - 1 - h;
+            h = parentH - y - 2;
 
         if (w < 2 || h < 2)
+        {
+            Console.WriteLine("pao na 2");
             return;
+        }
 
         _DrawFrame(
             x,
@@ -236,8 +233,19 @@ class DictNode : NodeType
             offsetY,
             ref env
         );
-
-        _DrawChildren(ref env, w, h, offsetX + x, offsetY + y, z, offsetX + x, offsetY + y);
+        
+        Console.WriteLine("Done: ");
+        for (int i = 0; i < 11; i++)
+        {
+            for (int j = 0; j < 80; j++)
+            {
+                Console.Write(env[i, j].Item1);
+            }
+    
+            Console.Write('\n');
+        }
+        
+        _DrawChildren(ref env, w, h, offsetX + x, offsetY + y, z, offsetX + x + 1, offsetY + y + 1);
     }
 
     private void _DrawFrame(
@@ -292,7 +300,7 @@ class DictNode : NodeType
 
     private void _DrawCell(int x, int y, int z, ref Tuple<char, int>[,] env, char c, bool checkZ)
     {
-        if (!checkZ || env[y, x].Item2 < z)
+        if (!checkZ || env[y, x].Item2 <= z)
         {
             env[y, x] = new Tuple<char, int>(c, z);
         }
