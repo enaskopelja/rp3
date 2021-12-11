@@ -111,7 +111,8 @@ class DictNode : NodeType
             }
         }
 
-        _DrawFrame(0, 0, w, h, z, 0, 0, ref env, false);
+        _DrawFrame(w, h, z, 0, 0, ref env, false);
+        _DrawFrame(w, h, z, 0, 0, ref env, false);
     
         for (int i = 0; i < 11; i++)
         {
@@ -224,13 +225,11 @@ class DictNode : NodeType
         }
 
         _DrawFrame(
-            x,
-            y,
             w,
             h,
             z,
-            offsetX,
-            offsetY,
+            x + offsetX,
+            y + offsetY,
             ref env
         );
         
@@ -249,20 +248,15 @@ class DictNode : NodeType
     }
 
     private void _DrawFrame(
-        int x, 
-        int y, 
         int w, 
         int h, 
         int z, 
-        int offsetX, 
-        int offsetY, 
+        int startX, 
+        int startY, 
         ref Tuple<char, int>[,] env,
         bool checkZ = true
         )
     {
-        int startX = x + offsetX;
-        int startY = y + offsetY;
-
         _DrawCell(startX, startY, z, ref env, '/', checkZ);
         _DrawCell(startX + w - 1, startY, z, ref env, '\\', checkZ);
         _DrawCell(startX + w -1, startY + h - 1, z, ref env, '/', checkZ);
