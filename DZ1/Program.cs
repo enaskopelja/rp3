@@ -3,10 +3,10 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using DZ1;
 
 namespace DZ1
 {
+
     internal abstract class NodeType
     {
         public abstract string pretty_print(int indent = 0);
@@ -91,7 +91,7 @@ namespace DZ1
                         string.Concat(Enumerable.Repeat(" ", indent + 4)) +
                         kv.Key + ": " +
                         kv.Value.pretty_print(indent + 4) +
-                        ", "
+                        ","
                     )
             ) + "\n" + string.Concat(Enumerable.Repeat(" ", indent)) + "}";
         }
@@ -138,9 +138,9 @@ namespace DZ1
             var node = _data["children"].Impl;
             switch (node)
             {
-                case IntNode:
-                    throw new ArgumentException("Tried drawing IntNode");
-                case DictNode:
+                case IntNode intNode:
+                    throw new ArgumentException("Tried drawing IntNode" + intNode);
+                case DictNode dictNode:
                     throw new ArgumentException("Tried drawing DictNode");
                 case StrNode strNode:
                     _Write(ref env, strNode.asString, offsetX, offsetY, parentW - 2, parentH - 2, parentZ);
@@ -192,7 +192,7 @@ namespace DZ1
                     _DrawCell(startX + cursor++, startY + row, z, ref env, letter);
 
                     if (cursor >= w)
-                        _LineBreak(ref cursor, ref row);
+                        _LineBreak(out cursor, ref row);
 
                     if (row >= h)
                         return;
@@ -204,7 +204,7 @@ namespace DZ1
         }
 
 
-        private void _LineBreak(ref int cursor, ref int row)
+        private void _LineBreak(out int cursor, ref int row)
         {
             cursor = 0;
             row++;
@@ -213,7 +213,7 @@ namespace DZ1
         private void _MaybeLineBreak(int wordLength, int w, ref int row, ref int cursor)
         {
             if (wordLength <= w - cursor || cursor == 0) return;
-            _LineBreak(ref cursor, ref row);
+            _LineBreak(out cursor, ref row);
         }
 
         private void Draw(
@@ -328,68 +328,194 @@ namespace DZ1
             throw new ArgumentException("Tried calling ToString on non dict node");
         }
     }
-}
 
 
-class Program
-{
-    static void Main(string[] args)
+    class Program
     {
-        node x = new node(
-            new Dictionary<string, node>
-            {
-                {
-                    "children",
-                    new node(
-                        new List<node>
-                        {
-                            new node(
-                                new Dictionary<string, node>
-                                {
-                                    {"z", new node(-1)},
-                                    {
-                                        "children",
-                                        new node(
-                                            new List<node>
-                                            {
-                                                new node(
-                                                    new Dictionary<string, node>
-                                                    {
-                                                        {"x", new node(2)},
-                                                        {"y", new node(2)},
-                                                        {"w", new node(25)},
-                                                        {"h", new node(4)},
-                                                        {"children", new node("Vidljivo dijete nevidljivog roditelja")},
-                                                    }
-                                                ),
-                                            }
-                                        )
+        static void Main(string[] args)
+        {
+            node part1 = new node(
+                new Dictionary<string, node> {
+                    {
+                        "children", 
+                        new node(
+                            new List<node> {
+                                new node(
+                                    new Dictionary<string, node> {
+                                        {"x", new node(2)},
+                                        {"y", new node(4)},
+                                        {"w", new node(20)},
+                                        {"h", new node(4)},
+                                        {"z", new node(2)},
+                                        {"children", new node("Neki dugacak tekst   neki dugacak tekst")},
                                     }
-                                }
-                            ),
-                            new node(
-                                new Dictionary<string, node>
-                                {
-                                    {"x", new node(27)},
-                                    {"h", new node(5)},
-                                    {"z", new node(1)},
-                                    {
-                                        "children",
-                                        new node(
-                                            "Lorem ipsum dolor sit amet consectetur adipiscing elit Nam hendrerit nisi sed sollicitudin pellentesque Nunc posuere purus rhoncus pulvinar aliquam")
-                                    },
-                                }
-                            ),
-                        }
-                    )
+                                ),
+                                new node(
+                                    new Dictionary<string, node> {
+                                        {"x", new node(18)},
+                                        {"y", new node(1)},
+                                        {"w", new node(20)},
+                                        {"h", new node(5)},
+                                        {"z", new node(1)},
+                                        {"children", new node("Neki jos dulji tekst neki jos dulji tekst neki jos dulji tekst")},
+                                    }
+                                ),
+                                new node(
+                                    new Dictionary<string, node> {
+                                        {"x", new node(42)},
+                                        {"y", new node(1)},
+                                        {"w", new node(32)},
+                                        {"h", new node(7)},
+                                        {
+                                            "children", 
+                                            new node(
+                                                new List<node> {
+                                                    new node(
+                                                            new Dictionary<string, node> {
+                                                            {"w", new node(6)},
+                                                            {"h", new node(3)},
+                                                            {"children", new node("")},
+                                                        }
+                                                    ),
+                                                    new node(
+                                                        new Dictionary<string, node> {
+                                                            {"x", new node(24)},
+                                                            {"y", new node(2)},
+                                                            {"children", new node(new List<node>() {})},
+                                                        }
+                                                    ),
+                                                }
+                                            )
+                                        },
+                                    }
+                                ),
+                            }
+                        )
+                    }
                 }
-            }
-        );
+            );
+                
+            // Prvi dio zadatka
+            Console.WriteLine(part1.pretty_print());
 
-        // Prvi dio zadatka
-        Console.WriteLine(x.pretty_print());
+            // Drugi dio zadatka
+            Console.WriteLine(part1);
 
-        // Drugi dio zadatka
-        Console.WriteLine(x);
+            node part2 = new node(
+                new Dictionary<string, node> {
+                    {"x", new node(20)},
+                    {"y", new node(3)},
+                    {"w", new node(30)},
+                    {"h", new node(123456789)},
+                    {"z", new node(-1234)},
+                    {
+                        "children", 
+                        new node(
+                            new List<node> {
+                                new node(
+                                    new Dictionary<string, node> {
+                                        {"w", new node(2)},
+                                        {"h", new node(2)},
+                                        {"z", new node(-12345)},
+                                        {"children", new node("Prozor prekriven roditeljem")},
+                                    }
+                                ),
+                                new node(
+                                    new Dictionary<string, node> {
+                                        {"x", new node(3)},
+                                        {"y", new node(2)},
+                                        {"w", new node(9)},
+                                        {"h", new node(4)},
+                                        {"children", new node("Vidljiv prozor")},
+                                    }
+                                ),
+                                new node(
+                                    new Dictionary<string, node> {
+                                        {"x", new node(15)},
+                                        {
+                                            "children",                                    
+                                            new node(
+                                                new List<node> {
+                                                    new node(
+                                                        new Dictionary<string, node> {
+                                                            {"z", new node(2)},
+                                                            {"children", new node("Jos jedan nevidljiv")}
+                                                        }
+                                                    ),
+                                                    new node(
+                                                        new Dictionary<string, node> {
+                                                            {"z", new node(3)},
+                                                            {"children", new node("Jos jedan vidljiv")}
+                                                        }
+                                                    )
+                                                }
+                                            )
+                                        }
+                                    }
+                                ),
+                            }
+                        )
+                    }
+                }
+            );
+                
+            // Prvi dio zadatka
+            Console.WriteLine(part2.pretty_print());
+
+            // Drugi dio zadatka
+            Console.WriteLine(part2);
+
+            
+            node part3 = new node(
+                new Dictionary<string, node> {
+                    {
+                        "children", 
+                        new node(
+                            new List<node> {
+                                new node(
+                                    new Dictionary<string, node> {
+                                        {"z", new node(-1)},
+                                        {
+                                            "children", 
+                                            new node(
+                                                new List<node> {
+                                                    new node(
+                                                        new Dictionary<string, node> {
+                                                            {"x", new node(2)},
+                                                            {"y", new node(2)},
+                                                            {"w", new node(25)},
+                                                            {"h", new node(4)},
+                                                            {"children", new node("Vidljivo dijete nevidljivog roditelja")},
+                                                        }
+                                                    ),
+                                                }
+                                            )
+                                        }
+                                    }
+                                ),
+                                new node(
+                                    new Dictionary<string, node> {
+                                        {"x", new node(27)},
+                                        {"h", new node(5)},
+                                        {"z", new node(1)},
+                                        {"children", new node("Lorem ipsum dolor sit amet consectetur adipiscing elit Nam hendrerit nisi sed sollicitudin pellentesque Nunc posuere purus rhoncus pulvinar aliquam")},
+                                    }
+                                ),
+                            }
+                        )
+                    }
+                }
+            );
+    
+            // Prvi dio zadatka
+            Console.WriteLine(part3.pretty_print());
+        
+            // Drugi dio zadatka
+            Console.WriteLine(part3);
+
+        }
     }
 }
+
+
+
