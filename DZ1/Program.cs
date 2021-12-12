@@ -21,18 +21,16 @@ namespace DZ1
 
         public override string pretty_print(int indent = 0) => _value.ToString();
 
-        public static implicit operator int(IntNode n) => n._value;
+        public static explicit operator int(IntNode n) => n._value;
     }
 
     internal class StrNode : NodeType
     {
         private readonly string _value;
 
-        public string asString => _value;
-
         public StrNode(string value) => _value = value ?? throw new ArgumentNullException(nameof(value));
 
-        public override string pretty_print(int indent = 0) => "\"" + _value + "\"";
+        public override string pretty_print(int indent = 0) => $"\"{_value}\"";
 
         public override string ToString() => _value;
     }
@@ -98,11 +96,11 @@ namespace DZ1
 
         public string DrawRoot()
         {
-            int w = Math.Min(_GetValue("w", 80), 80);
-            int h = Math.Min(_GetValue("h", 11), 11);
-            int z = _GetValue("z", 0);
+            var w = Math.Min(_GetValue("w", 80), 80);
+            var h = Math.Min(_GetValue("h", 11), 11);
+            var z = _GetValue("z", 0);
 
-            Tuple<char, int>[,] env = new Tuple<char, int>[h, w];
+            var env = new Tuple<char, int>[h, w];
 
             _DrawFrame(w, h, z, 0, 0, ref env, false);
             _DrawChildren(ref env, w, h, z, 1, 1);
@@ -110,9 +108,9 @@ namespace DZ1
             return _ParseResult(env);
         }
 
-        private string _ParseResult(Tuple<char, int>[,] env)
+        private static string _ParseResult(Tuple<char, int>[,] env)
         {
-            string result = "";
+            var result = "";
             for (var i = 0; i < env.GetLength(0); i++)
             {
                 for (var j = 0; j < env.GetLength(1); j++)
@@ -143,7 +141,7 @@ namespace DZ1
                 case DictNode dictNode:
                     throw new ArgumentException("Tried drawing DictNode");
                 case StrNode strNode:
-                    _Write(ref env, strNode.asString, offsetX, offsetY, parentW - 2, parentH - 2, parentZ);
+                    _Write(ref env, strNode.ToString(), offsetX, offsetY, parentW - 2, parentH - 2, parentZ);
                     break;
 
                 case ListNode listNode:
@@ -306,27 +304,25 @@ namespace DZ1
 
     class node
     {
-        private readonly NodeType _impl;
+        public NodeType Impl { get; }
 
-        public NodeType Impl => _impl;
+        public node(int value) : this(new IntNode(value)) { }
 
-        public node(int value) => _impl = new IntNode(value);
+        public node(string value) : this(new StrNode(value)) { }
 
-        public node(string value) => _impl = new StrNode(value);
+        public node(List<node> value) : this(new ListNode(value)) { }
 
-        public node(List<node> value) => _impl = new ListNode(value);
+        public node(Dictionary<string, node> value) : this(new DictNode(value)) { }
 
-        public node(Dictionary<string, node> value) => _impl = new DictNode(value);
+        private node(NodeType impl) => Impl = impl;
 
 
-        public string pretty_print(int indent = 0) => _impl.pretty_print(indent);
+        public string pretty_print(int indent = 0) => Impl.pretty_print(indent);
 
-        public override string ToString()
-        {
-            if (_impl is DictNode impl)
-                return impl.DrawRoot();
-            throw new ArgumentException("Tried calling ToString on non dict node");
-        }
+        public override string ToString() =>
+            Impl is DictNode impl
+                ? impl.DrawRoot()
+                : throw new ArgumentException("Tried calling ToString on non dict node");
     }
 
 
