@@ -73,8 +73,18 @@ namespace DZ1
     internal class DictNode : NodeType
     {
         private readonly Dictionary<string, node> _data;
+        private readonly Dictionary<string, int> _defaultValues;
 
-        public DictNode(Dictionary<string, node> data) => _data = data;
+        public DictNode(Dictionary<string, node> data)
+        {
+            _data = data;
+            _defaultValues = new Dictionary<string, int>();
+            _defaultValues.Add("x", 0);
+            _defaultValues.Add("y", 0);
+            _defaultValues.Add("w", 80);
+            _defaultValues.Add("h", 11);
+            _defaultValues.Add("z", 0);
+        } 
 
         public override string pretty_print(int indent = 0)
         {
@@ -93,55 +103,98 @@ namespace DZ1
                     )
             ) + "\n" + string.Concat(Enumerable.Repeat(" ", indent)) + "}";
         }
-
-        public string DrawRoot()
+        
+        public int Value(string s)
         {
-            var w = Math.Min(_GetValue("w", 80), 80);
-            var h = Math.Min(_GetValue("h", 11), 11);
-            var z = _GetValue("z", 0);
+            if (!_data.ContainsKey(s))
+                return _defaultValues[s];
+            
+            if (_data[s].Impl is IntNode node)
+                return (int) node;
 
-            var env = new Tuple<char, int>[h, w];
-
-            _DrawFrame(w, h, z, 0, 0, ref env, false);
-            _DrawChildren(ref env, w, h, z, 1, 1);
-
-            return _ParseResult(env);
+            throw new ArgumentException("expected int");
         }
-
-        private static string _ParseResult(Tuple<char, int>[,] env)
+        
+        public void MaybeAdjustWh(int maxW, int maxH)
         {
-            var result = "";
-            for (var i = 0; i < env.GetLength(0); i++)
-            {
-                for (var j = 0; j < env.GetLength(1); j++)
-                    result += env[i, j].Item1;
-                result += '\n';
-            }
+            if (Value("w") > maxW)
+                _data["w"] = new node(maxW);
 
-            return result;
+            if (Value("h") > maxH)
+                _data["h"] = new node(maxH);
         }
+        
+        public bool HasChildren() => _data.ContainsKey("children");
 
+        public node GetChildren() => _data["children"];
+    }
+
+    class Drawer
+    {
+        private Tuple<char, int>[,] _env;
+
+        public string Draw(DictNode dictNode)
+        {
+            var z = dictNode.Value("z");
+
+            dictNode.MaybeAdjustWh(80, 11);
+            var w = dictNode.Value("w"); 
+            var h = dictNode.Value("h"); 
+
+            _env = new Tuple<char, int>[h, w];
+
+            _DrawFrame(w, h, z, 0, 0, false);
+            _DrawChildren(dictNode, 1, 1);
+
+            return _ParseResult();
+        }
+        
+        private void Draw(
+            DictNode dictNode,
+            int maxW,
+            int maxH,
+            int offsetX = 0, 
+            int offsetY = 0
+        )
+        {
+            var x = dictNode.Value("x");
+            var y = dictNode.Value("y");
+            var z = dictNode.Value("z");
+            
+            dictNode.MaybeAdjustWh(maxW - x - 2, maxH - y - 2);
+            var w = dictNode.Value("w");
+            var h = dictNode.Value("h");
+
+            if (maxW < x || x < 0 || maxH < y || y < 0 || w < 2 || h < 2)
+                return;
+
+            _DrawFrame(w, h, z, x + offsetX, y + offsetY);
+            if(dictNode.HasChildren())
+                _DrawChildren(dictNode, x + offsetX + 1, y + offsetY + 1);
+        }
+        
         private void _DrawChildren(
-            ref Tuple<char, int>[,] env,
-            int parentW,
-            int parentH,
-            int parentZ,
+            DictNode parent,
             int offsetX,
             int offsetY
         )
         {
-            if (!_data.ContainsKey("children"))
-                return;
-
-            var node = _data["children"].Impl;
+            var node = parent.GetChildren().Impl;
             switch (node)
             {
                 case IntNode intNode:
                     throw new ArgumentException("Tried drawing IntNode" + intNode);
-                case DictNode dictNode:
+                case DictNode _:
                     throw new ArgumentException("Tried drawing DictNode");
                 case StrNode strNode:
-                    _Write(ref env, strNode.ToString(), offsetX, offsetY, parentW - 2, parentH - 2, parentZ);
+                    _Write(
+                        strNode.ToString(), 
+                        offsetX, 
+                        offsetY, 
+                        parent.Value("w") - 2, 
+                        parent.Value("h") - 2, 
+                        parent.Value("z")
+                        );
                     break;
 
                 case ListNode listNode:
@@ -149,7 +202,7 @@ namespace DZ1
                     foreach (var l in listNode)
                     {
                         if (l.Impl is DictNode dictNode)
-                            dictNode.Draw(ref env, parentW, parentH, offsetX, offsetY);
+                            Draw(dictNode, parent.Value("w"), parent.Value("h"), offsetX, offsetY);
                         else
                             throw new ArgumentException("Encountered ListNode with non DictNode element while drawing");
                     }
@@ -159,8 +212,57 @@ namespace DZ1
             }
         }
 
+        
+        private void _DrawFrame(
+            int w,
+            int h,
+            int z,
+            int startX,
+            int startY,
+            bool checkZ = true
+        )
+        {
+            _DrawCorners(w, h, z, startX, startY, checkZ);
+            _DrawVerticalEdgesAndInterior(w, h, z, startX, startY, checkZ);
+            _DrawHorizontalEdges(w, h, z, startX, startY, checkZ);
+        }
+
+        private void _DrawHorizontalEdges(int w, int h, int z, int startX, int startY, bool checkZ)
+        {
+            for (var i = startY + 1; i < startY + h - 1; i++)
+            {
+                _DrawCell(startX, i, z, '|', checkZ);
+                _DrawCell(startX + w - 1, i, z, '|', checkZ);
+            }
+        }
+
+        private void _DrawVerticalEdgesAndInterior(int w, int h, int z, int startX, int startY, bool checkZ)
+        {
+            for (var i = startX + 1; i < startX + w - 1; i++)
+            {
+                _DrawCell(i, startY, z, '-', checkZ);
+                _DrawCell(i, startY + h - 1, z, '-', checkZ);
+
+                for (var j = startY + 1; j < startY + h - 1; j++)
+                    _DrawCell(i, j, z, ' ', checkZ);
+            }
+        }
+
+        private void _DrawCorners(int w, int h, int z, int startX, int startY, bool checkZ)
+        {
+            _DrawCell(startX, startY, z, '/', checkZ);
+            _DrawCell(startX + w - 1, startY, z, '\\', checkZ);
+            _DrawCell(startX + w - 1, startY + h - 1, z, '/', checkZ);
+            _DrawCell(startX, startY + h - 1, z, '\\', checkZ);
+        }
+
+        private void _DrawCell(int x, int y, int z, char c, bool checkZ = true)
+        {
+            if (!checkZ || _env[y, x].Item2 <= z)
+                _env[y, x] = new Tuple<char, int>(c, z);
+        }
+        
         private void _Write(
-            ref Tuple<char, int>[,] env,
             string text,
             int startX,
             int startY,
@@ -176,7 +278,7 @@ namespace DZ1
             int cursor = 0, row = 0;
 
             for (var i = 0; i < whitespacesCount; i++)
-                _DrawCell(startX + cursor++, startY + row, z, ref env, ' ');
+                _DrawCell(startX + cursor++, startY + row, z, ' ');
 
             foreach (var word in text.Split(' '))
             {
@@ -187,7 +289,7 @@ namespace DZ1
 
                 foreach (var letter in word)
                 {
-                    _DrawCell(startX + cursor++, startY + row, z, ref env, letter);
+                    _DrawCell(startX + cursor++, startY + row, z, letter);
 
                     if (cursor >= w)
                         _LineBreak(out cursor, ref row);
@@ -197,7 +299,7 @@ namespace DZ1
                 }
 
                 if (cursor == 0) continue;
-                _DrawCell(startX + cursor++, startY + row, z, ref env, ' ');
+                _DrawCell(startX + cursor++, startY + row, z, ' ');
             }
         }
 
@@ -214,93 +316,19 @@ namespace DZ1
             _LineBreak(out cursor, ref row);
         }
 
-        private void Draw(
-            ref Tuple<char, int>[,] env,
-            int parentW,
-            int parentH,
-            int offsetX = 0,
-            int offsetY = 0
-        )
+        private string _ParseResult()
         {
-            var x = _GetValue("x", 0);
-            var y = _GetValue("y", 0);
-            var z = _GetValue("z", 0);
-            var w = Math.Min(_GetValue("w", 80), parentW - x - 2);
-            var h = Math.Min(_GetValue("h", 11), parentH - y - 2);
-
-            if (parentW < x || x < 0 || parentH < y || y < 0 || w < 2 || h < 2)
-                return;
-
-            _DrawFrame(w, h, z, x + offsetX, y + offsetY, ref env);
-            _DrawChildren(ref env, w, h, z, offsetX + x + 1, offsetY + y + 1);
-        }
-
-        private void _DrawFrame(
-            int w,
-            int h,
-            int z,
-            int startX,
-            int startY,
-            ref Tuple<char, int>[,] env,
-            bool checkZ = true
-        )
-        {
-            _DrawCorners(w, h, z, startX, startY, ref env, checkZ);
-            _DrawVerticalEdgesAndInterior(w, h, z, startX, startY, ref env, checkZ);
-            _DrawHorizontalEdges(w, h, z, startX, startY, ref env, checkZ);
-        }
-
-        private void _DrawHorizontalEdges(int w, int h, int z, int startX, int startY, ref Tuple<char, int>[,] env,
-            bool checkZ)
-        {
-            for (var i = startY + 1; i < startY + h - 1; i++)
+            var result = "";
+            for (var i = 0; i < _env.GetLength(0); i++)
             {
-                _DrawCell(startX, i, z, ref env, '|', checkZ);
-                _DrawCell(startX + w - 1, i, z, ref env, '|', checkZ);
+                for (var j = 0; j < _env.GetLength(1); j++)
+                    result += _env[i, j].Item1;
+                result += '\n';
             }
-        }
 
-        private void _DrawVerticalEdgesAndInterior(int w, int h, int z, int startX, int startY,
-            ref Tuple<char, int>[,] env,
-            bool checkZ)
-        {
-            for (var i = startX + 1; i < startX + w - 1; i++)
-            {
-                _DrawCell(i, startY, z, ref env, '-', checkZ);
-                _DrawCell(i, startY + h - 1, z, ref env, '-', checkZ);
-
-                for (var j = startY + 1; j < startY + h - 1; j++)
-                    _DrawCell(i, j, z, ref env, ' ', checkZ);
-            }
-        }
-
-        private void _DrawCorners(int w, int h, int z, int startX, int startY, ref Tuple<char, int>[,] env, bool checkZ)
-        {
-            _DrawCell(startX, startY, z, ref env, '/', checkZ);
-            _DrawCell(startX + w - 1, startY, z, ref env, '\\', checkZ);
-            _DrawCell(startX + w - 1, startY + h - 1, z, ref env, '/', checkZ);
-            _DrawCell(startX, startY + h - 1, z, ref env, '\\', checkZ);
-        }
-
-        private int _GetValue(string s, int defaultValue
-        )
-        {
-            if (!_data.ContainsKey(s))
-                return defaultValue;
-
-            if (_data[s].Impl is IntNode node)
-                return (int) node;
-
-            throw new ArgumentException("expected int");
-        }
-
-        private void _DrawCell(int x, int y, int z, ref Tuple<char, int>[,] env, char c, bool checkZ = true)
-        {
-            if (!checkZ || env[y, x].Item2 <= z)
-                env[y, x] = new Tuple<char, int>(c, z);
+            return result;
         }
     }
-
 
     class node
     {
@@ -319,10 +347,17 @@ namespace DZ1
 
         public string pretty_print(int indent = 0) => Impl.pretty_print(indent);
 
-        public override string ToString() =>
-            Impl is DictNode impl
-                ? impl.DrawRoot()
-                : throw new ArgumentException("Tried calling ToString on non dict node");
+        public override string ToString()
+        {
+            if (Impl is DictNode impl)
+            {
+                Drawer drawer = new Drawer();
+                return drawer.Draw(impl);
+            }
+                
+            throw new ArgumentException("Tried calling ToString on non dict node");
+        }
+            
     }
 
 
