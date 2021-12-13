@@ -271,8 +271,8 @@ namespace DZ1
             int z
         )
         {
-            string trimmed = text.TrimStart();
-            int whitespacesCount = Math.Min(text.Length - trimmed.Length, w);
+            var trimmed = text.TrimStart();
+            var whitespacesCount = Math.Min(text.Length - trimmed.Length, w);
             text = Regex.Replace(trimmed, @"\s+", " ");
 
             int cursor = 0, row = 0;
@@ -349,15 +349,10 @@ namespace DZ1
 
         public override string ToString()
         {
-            if (Impl is DictNode impl)
-            {
-                Drawer drawer = new Drawer();
-                return drawer.Draw(impl);
-            }
-                
-            throw new ArgumentException("Tried calling ToString on non dict node");
+            if (!(Impl is DictNode impl)) throw new ArgumentException("Tried calling ToString on non dict node");
+            var drawer = new Drawer();
+            return drawer.Draw(impl);
         }
-            
     }
 
 
